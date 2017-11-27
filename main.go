@@ -4,32 +4,55 @@ import (
 	"fmt"
 	"runtime"
 	// "github.com/Jeffail/gabs"
+	"os"
 	"thierry/gocoin/bitfinex"
-	// "thierry/gocoin/bitmex"
+	"thierry/gocoin/bitmex"
 	"thierry/gocoin/common"
-	// "thierry/gocoin/gdax"
+	"thierry/gocoin/gdax"
 	"time"
 )
 
 func timer(prices map[string][]float64) {
 	for true {
-		fmt.Printf("%f (%f) - %f (%f)\n",
+		if prices["gdax"][0] <= 1 ||
+			prices["gdax"][2] <= 1 ||
+			prices["bitfinex"][0] <= 1 ||
+			prices["bitfinex"][2] <= 1 ||
+			prices["bitmex"][0] <= 1 ||
+			prices["bitmex"][2] <= 1 {
+			continue
+		}
+		fmt.Printf("Gdax - %f (%f) - %f (%f)\n",
+			prices["gdax"][0],
+			prices["gdax"][1],
+			prices["gdax"][2],
+			prices["gdax"][3],
+		)
+		fmt.Printf("Bitfinex - %f (%f) - %f (%f)\n",
 			prices["bitfinex"][0],
 			prices["bitfinex"][1],
 			prices["bitfinex"][2],
 			prices["bitfinex"][3],
 		)
-		// file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_WRONLY, 0600)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// defer file.Close()
-		// if _, err = file.WriteString(fmt.Sprintf("%s###gdax: %f (%f) - %f (%f)\n",
-		// 	time.Now().Format(time.RFC3339),
-		// 	prices["gdax"][0], prices["gdax"][1], prices["gdax"][2], prices["gdax"][3])); err != nil {
-		// 	panic(err)
-		// }
-		time.Sleep(3 * time.Second)
+		fmt.Printf("Bitmex - %f (%f) - %f (%f)\n",
+			prices["bitmex"][0],
+			prices["bitmex"][1],
+			prices["bitmex"][2],
+			prices["bitmex"][3],
+		)
+		file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		if _, err = file.WriteString(fmt.Sprintf("%s###%f###%f###%f###%f###%f###%f\n",
+			time.Now().Format(time.RFC3339),
+			prices["gdax"][0], prices["gdax"][2],
+			prices["bitfinex"][0], prices["bitfinex"][2],
+			prices["bitmex"][0], prices["bitmex"][2])); err != nil {
+			panic(err)
+		}
+		time.Sleep(1 * time.Second)
 	}
 }
 
