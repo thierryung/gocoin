@@ -6,7 +6,18 @@ import (
 	"strconv"
 	"thierry/gocoin/common"
 	"time"
+	"os"
 )
+
+type Candle struct {
+	Time		time.Time
+	Open 		float64
+	High 		float64
+	Low 		float64
+	Close 		float64
+	Average		float64
+	Volume		float64
+}
 
 type GdaxSubscribe struct {
 	Type       string              `json:"type"`
@@ -40,7 +51,11 @@ type GdaxMessage struct {
 	Changes       [][]string `json:"changes,omitempty"`
 }
 
-func Update(orderBook map[string]*common.Order, prices map[string][]float64) {
+func Update() {
+	var candleChartBtc []Candle
+	var candleChartEth []Candle
+	var candleChartLtc []Candle
+
 	var wsDialer ws.Dialer
 	wsConn, _, err := wsDialer.Dial("wss://ws-feed.gdax.com", nil)
 	if err != nil {
@@ -49,8 +64,8 @@ func Update(orderBook map[string]*common.Order, prices map[string][]float64) {
 
 	subscribe := GdaxSubscribe{
 		Type:       "subscribe",
-		Channels:   []map[string]string{{"name": "level2"}},
-		ProductIds: []string{"BTC-USD"},
+		Channels:   []map[string]string{/*{"name": "level2"}, */{"name": "matches"}},
+		ProductIds: []string{"BTC-USD", "LTC-USD", "ETH-USD"},
 	}
 
 	if err := wsConn.WriteJSON(subscribe); err != nil {
@@ -65,13 +80,24 @@ func Update(orderBook map[string]*common.Order, prices map[string][]float64) {
 			println(err.Error())
 			break
 		}
-		updateOrderBook(message, orderBook)
+		if message.Type == "match" {
+			if message.ProductId == "BTC-USD" {
+				updateMatch(message, &candleChartBtc)
+			} else if message.ProductId == "ETH-USD" {
+				updateMatch(message, &candleChartEth)
+			} else if message.ProductId == "LTC-USD" {
+				updateMatch(message, &candleChartLtc)
+			}
+
+		} else {
+			// updateOrderBook(message, orderBook)
+		}
 
 		// Get highest buy (that we can sell to) / lowest sell (that we can buy from) price
 		counter += 1
 		// TODO: Reduce the counter cooldown
 		if counter%10 == 0 {
-			updateBestPrices(orderBook, prices)
+			// updateBestPrices(orderBook, prices)
 		}
 	}
 }
@@ -91,6 +117,45 @@ func updateBestPrices(orderBook map[string]*common.Order, prices map[string][]fl
 	prices["gdax"][1] = buySize
 	prices["gdax"][2] = sell
 	prices["gdax"][3] = sellSize
+}
+
+func updateMatch(message GdaxMessage, candleChart *[]Candle) {
+	// Check if we're still in the current minute, or we need a new one
+	t := time.Now()
+	l := len(*candleChart)
+	if l == 0 || (*candleChart)[l-1].Time.Unix() + 60 < t.Unix() {
+		*candleChart = append(*candleChart, Candle{
+			Time: t.Truncate(time.Minute),
+			Open: message.Price,
+			High: message.Price,
+			Low: message.Price,
+			Close: message.Price,
+			Average: message.Price,
+			Volume: message.Size,
+		})
+		// Only keep in memory past 60 candles
+		if l > 60 {
+			copy(*candleChart, (*candleChart)[1:])
+			*candleChart = (*candleChart)[:l - 1]
+		}
+		if l > 1 {
+			l -= 2
+			go output(message.ProductId, (*candleChart)[l])
+		}
+	} else {
+		l -= 1
+		if message.Price > (*candleChart)[l].High {
+			(*candleChart)[l].High = message.Price
+		} else if message.Price < (*candleChart)[l].Low {
+			(*candleChart)[l].Low = message.Price
+		}
+		// Update close to last price
+		(*candleChart)[l].Close = message.Price
+		// Also update average
+		(*candleChart)[l].Average = ((*candleChart)[l].High + (*candleChart)[l].Low + (*candleChart)[l].Open + (*candleChart)[l].Close) / 4
+		// And volume
+		(*candleChart)[l].Volume += message.Size
+	}
 }
 
 func updateOrderBook(message GdaxMessage, orderBook map[string]*common.Order) {
@@ -159,3 +224,32 @@ func updateOrderBook(message GdaxMessage, orderBook map[string]*common.Order) {
 		fmt.Println("Message type is " + message.Type)
 	}
 }
+
+func output(productId string, candle Candle) {
+	file, err := os.OpenFile(productId + ".txt", os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	if _, err = file.WriteString(fmt.Sprintf("%d %f %f %f %f %f %f\n",
+		candle.Time.Unix(),
+		candle.Open,
+		candle.High,
+		candle.Low,
+		candle.Close,
+		candle.Average,
+		candle.Volume)); err != nil {
+		fmt.Printf("ERROR WHILE WRITING")
+	}
+	fmt.Printf("%s %d %f %f %f %f %f %f\n",
+		productId,
+		candle.Time.Unix(),
+		candle.Open,
+		candle.High,
+		candle.Low,
+		candle.Close,
+		candle.Average,
+		candle.Volume,
+	)
+}
+

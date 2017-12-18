@@ -4,54 +4,54 @@ import (
 	"fmt"
 	"runtime"
 	// "github.com/Jeffail/gabs"
-	"os"
-	"thierry/gocoin/bitfinex"
-	"thierry/gocoin/bitmex"
-	"thierry/gocoin/common"
+	// "os"
+	// "thierry/gocoin/bitfinex"
+	// "thierry/gocoin/bitmex"
+	// "thierry/gocoin/common"
 	"thierry/gocoin/gdax"
 	"time"
 )
 
 func timer(prices map[string][]float64) {
 	for true {
-		if prices["gdax"][0] <= 1 ||
-			prices["gdax"][2] <= 1 ||
-			prices["bitfinex"][0] <= 1 ||
-			prices["bitfinex"][2] <= 1 ||
-			prices["bitmex"][0] <= 1 ||
-			prices["bitmex"][2] <= 1 {
-			continue
-		}
+		// if prices["gdax"][0] <= 1 ||
+		// 	prices["gdax"][2] <= 1 ||
+		// 	prices["bitfinex"][0] <= 1 ||
+		// 	prices["bitfinex"][2] <= 1 ||
+		// 	prices["bitmex"][0] <= 1 ||
+		// 	prices["bitmex"][2] <= 1 {
+		// 	continue
+		// }
 		fmt.Printf("Gdax - %f (%f) - %f (%f)\n",
 			prices["gdax"][0],
 			prices["gdax"][1],
 			prices["gdax"][2],
 			prices["gdax"][3],
 		)
-		fmt.Printf("Bitfinex - %f (%f) - %f (%f)\n",
-			prices["bitfinex"][0],
-			prices["bitfinex"][1],
-			prices["bitfinex"][2],
-			prices["bitfinex"][3],
-		)
-		fmt.Printf("Bitmex - %f (%f) - %f (%f)\n",
-			prices["bitmex"][0],
-			prices["bitmex"][1],
-			prices["bitmex"][2],
-			prices["bitmex"][3],
-		)
-		file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-		if _, err = file.WriteString(fmt.Sprintf("%s###%f###%f###%f###%f###%f###%f\n",
-			time.Now().Format(time.RFC3339),
-			prices["gdax"][0], prices["gdax"][2],
-			prices["bitfinex"][0], prices["bitfinex"][2],
-			prices["bitmex"][0], prices["bitmex"][2])); err != nil {
-			panic(err)
-		}
+		// fmt.Printf("Bitfinex - %f (%f) - %f (%f)\n",
+		// 	prices["bitfinex"][0],
+		// 	prices["bitfinex"][1],
+		// 	prices["bitfinex"][2],
+		// 	prices["bitfinex"][3],
+		// )
+		// fmt.Printf("Bitmex - %f (%f) - %f (%f)\n",
+		// 	prices["bitmex"][0],
+		// 	prices["bitmex"][1],
+		// 	prices["bitmex"][2],
+		// 	prices["bitmex"][3],
+		// )
+		// file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_WRONLY, 0600)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// defer file.Close()
+		// if _, err = file.WriteString(fmt.Sprintf("%s###%f###%f###%f###%f###%f###%f\n",
+		// 	time.Now().Format(time.RFC3339),
+		// 	prices["gdax"][0], prices["gdax"][2],
+		// 	prices["bitfinex"][0], prices["bitfinex"][2],
+		// 	prices["bitmex"][0], prices["bitmex"][2])); err != nil {
+		// 	panic(err)
+		// }
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -67,19 +67,20 @@ func mem() {
 
 func main() {
 	queue := make(chan int)
-	bitmexOrderBook := map[string]*common.Order{}
-	gdaxOrderBook := map[string]*common.Order{}
-	bitfinexOrderBook := map[string]*common.Order{}
+	// bitmexOrderBook := map[string]*common.Order{}
+	// bitfinexOrderBook := map[string]*common.Order{}
+	// gdaxOrderBook := map[string]*common.Order{}
 
-	prices := map[string][]float64{
-		"gdax":     {0, 0, 0, 0},
-		"bitfinex": {0, 0, 0, 0},
-		"bitmex":   {0, 0, 0, 0},
-	}
-	go gdax.Update(gdaxOrderBook, prices)
-	go bitfinex.Update(bitfinexOrderBook, prices)
-	go bitmex.Update(bitmexOrderBook, prices)
-	go timer(prices)
+	// Buy Price, Size Avail, Sell Price, Size Avail, Last Ticker Price, Volume
+	// prices := map[string][]float64{
+	// 	"gdax":     {0, 0, 0, 0, 0, 0},
+	// 	// "bitfinex": {0, 0, 0, 0},
+	// 	// "bitmex":   {0, 0, 0, 0},
+	// }
+	go gdax.Update()//gdaxOrderBook, prices)
+	// go bitfinex.Update(bitfinexOrderBook, prices)
+	// go bitmex.Update(bitmexOrderBook, prices)
+	// go timer(prices)
 	// go mem()
 
 	// orderBook := map[float64]Order{}
