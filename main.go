@@ -77,7 +77,7 @@ func main() {
 	// 	// "bitfinex": {0, 0, 0, 0},
 	// 	// "bitmex":   {0, 0, 0, 0},
 	// }
-	go gdax.Update()//gdaxOrderBook, prices)
+	go gdax.Update() //gdaxOrderBook, prices)
 	// go bitfinex.Update(bitfinexOrderBook, prices)
 	// go bitmex.Update(bitmexOrderBook, prices)
 	// go timer(prices)

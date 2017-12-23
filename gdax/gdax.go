@@ -3,27 +3,27 @@ package gdax
 import (
 	"fmt"
 	ws "github.com/gorilla/websocket"
+	"os"
 	"strconv"
 	"thierry/gocoin/common"
 	"time"
-	"os"
 )
 
 var NUM_CANDLE = 60
 
 type Candle struct {
-	Time		time.Time
-	Open 		float64
-	High 		float64
-	Low 		float64
-	Close 		float64
-	Average		float64
-	Volume		float64
+	Time    time.Time
+	Open    float64
+	High    float64
+	Low     float64
+	Close   float64
+	Average float64
+	Volume  float64
 }
 
 type CandleChart struct {
-	CurrElem	int
-	Chart		[]Candle
+	CurrElem int
+	Chart    []Candle
 }
 
 type GdaxSubscribe struct {
@@ -69,7 +69,7 @@ func Update() {
 
 	subscribe := GdaxSubscribe{
 		Type:       "subscribe",
-		Channels:   []map[string]string{/*{"name": "level2"}, */{"name": "matches"}},
+		Channels:   []map[string]string{ /*{"name": "level2"}, */ {"name": "matches"}},
 		ProductIds: []string{"BTC-USD", "LTC-USD", "ETH-USD"},
 	}
 
@@ -160,16 +160,16 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*CandleChart) {
 	candleChart := candleCharts[productId]
 
 	// if candleChart.currentCandle().Time.UnixNano() + 60000000000 < t.UnixNano() {
-	if candleChart.currentCandle().Time.UnixNano() + 1000000000 < t.UnixNano() {
+	if candleChart.currentCandle().Time.UnixNano()+1000000000 < t.UnixNano() {
 		candleChart.addCandle(Candle{
 			// Time: t.Truncate(time.Minute),
-			Time: t.Truncate(time.Second),
-			Open: message.Price,
-			High: message.Price,
-			Low: message.Price,
-			Close: message.Price,
+			Time:    t.Truncate(time.Second),
+			Open:    message.Price,
+			High:    message.Price,
+			Low:     message.Price,
+			Close:   message.Price,
 			Average: message.Price,
-			Volume: message.Size,
+			Volume:  message.Size,
 		})
 		go output(message.ProductId, candleChart.currentCandle())
 	} else {
@@ -245,7 +245,7 @@ func updateOrderBook(message GdaxMessage, orderBook map[string]*common.Order) {
 }
 
 func output(productId string, candle Candle) {
-	file, err := os.OpenFile(productId + ".txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(productId+".txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -271,4 +271,3 @@ func output(productId string, candle Candle) {
 		candle.Volume,
 	)
 }
-
