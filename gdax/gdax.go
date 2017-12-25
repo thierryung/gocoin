@@ -114,13 +114,15 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*common.CandleChar
 	candleChart := candleCharts[productId]
 
 	// Check if message belongs to this current or previous candle
-	if candleChart.CurrentCandle().Time.UnixNano()+60000000000 <= t.UnixNano() {
-		// Following output could be improved. Right now we are waiting for the next message
-		// to indicate a new candle, and possibly loosing a few seconds of headstart.
-		go output(message.ProductId, candleChart.CurrentCandle())
+	currentCandle := candleChart.CurrentCandle()
+	if currentCandle.Time.UnixNano()+60000000000 <= t.UnixNano() {
 
 		// Update current candle with indicators
-		// candleChart.CompleteCurrentCandle()
+		candleChart.CompleteCurrentCandle()
+
+		// Following output could be improved. Right now we are waiting for the next message
+		// to indicate a new candle, and possibly loosing a few seconds of headstart.
+		go output(message.ProductId, currentCandle)
 
 		// Add new candle
 		candleChart.AddCandle(common.Candle{
@@ -135,7 +137,7 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*common.CandleChar
 	} else {
 		// We're handling the edge case here, if we already created a new current candle, but
 		// for some reason we just got a match from past minute, we need to handle past minute candle
-		if candleChart.CurrentCandle().Time.UnixNano() > t.UnixNano() {
+		if currentCandle.Time.UnixNano() > t.UnixNano() {
 			candleChart.UpdatePreviousCandle(message.Price, message.Size)
 		} else {
 			candleChart.UpdateCurrentCandle(message.Price, message.Size)

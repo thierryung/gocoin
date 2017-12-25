@@ -5,6 +5,7 @@ import (
 )
 
 var NUM_CANDLE = 60
+var NUM_INDICATOR = 10
 
 type Candle struct {
 	Time       time.Time
@@ -18,8 +19,9 @@ type Candle struct {
 }
 
 type CandleChart struct {
-	Chart    []Candle
-	currElem int
+	Chart       []Candle
+	currElem    int
+	totalCandle int
 }
 
 // Public
@@ -32,10 +34,27 @@ func (chart *CandleChart) AddCandle(candle Candle) {
 		chart.currElem = 0
 	}
 	chart.Chart[chart.currElem] = candle
+	chart.totalCandle += 1
 }
 
-func (chart *CandleChart) CurrentCandle() Candle {
-	return chart.Chart[chart.currElem]
+func (chart *CandleChart) CurrentCandle() *Candle {
+	return &chart.Chart[chart.currElem]
+}
+
+func (chart *CandleChart) GetPastRelativeCandle(i int) *Candle {
+	// Simple check, since it makes no sense to look for future candles
+	if i > 0 || i < 0-len(chart.Chart) {
+		return nil
+	}
+	// Abs
+	i = -i
+	pos := chart.currElem
+	if i > chart.currElem {
+		pos = len(chart.Chart) - i - chart.currElem
+	} else {
+		pos = chart.currElem - i
+	}
+	return &chart.Chart[pos]
 }
 
 func (chart *CandleChart) UpdateCurrentCandle(price, size float64) {
@@ -47,6 +66,33 @@ func (chart *CandleChart) UpdatePreviousCandle(price, size float64) {
 }
 
 func (chart *CandleChart) CompleteCurrentCandle() {
+	mfiConfig := 14
+	// macdLine1, macdLine2, macdSignal := 10, 26, 9
+
+	candle := chart.CurrentCandle()
+	candle.Indicators = make(map[string]float64, NUM_INDICATOR)
+
+	// Calculate MFI
+	// Money flow for all related candles
+	moneyFlowPositive, moneyFlowNegative, previousPrice := 0.0, 0.0, 0.0
+	// Start at candle current - mfiConfig
+	for i := -mfiConfig; i <= 0; i++ {
+		c := chart.GetPastRelativeCandle(i)
+		price := (c.High + c.Low + c.Close) / 3
+		moneyFlow := price * c.Volume
+		if price > previousPrice {
+			moneyFlowPositive += moneyFlow
+		} else if price < previousPrice {
+			moneyFlowNegative += moneyFlow
+		}
+		previousPrice = price
+	}
+	// Money ratio
+	moneyFlowRatio := moneyFlowPositive / moneyFlowNegative
+	candle.Indicators["mfi"] = 100 - (100 / (1 + moneyFlowRatio))
+
+	// Calculate MACD
+
 }
 
 func CreateNewCandleChart() *CandleChart {
