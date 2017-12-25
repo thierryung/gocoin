@@ -9,23 +9,6 @@ import (
 	"time"
 )
 
-var NUM_CANDLE = 60
-
-type Candle struct {
-	Time    time.Time
-	Open    float64
-	High    float64
-	Low     float64
-	Close   float64
-	Average float64
-	Volume  float64
-}
-
-type CandleChart struct {
-	CurrElem int
-	Chart    []Candle
-}
-
 type GdaxSubscribe struct {
 	Type       string              `json:"type"`
 	Channels   []map[string]string `json:"channels"`
@@ -65,7 +48,7 @@ func Update() {
 		println(err.Error())
 	}
 
-	var candleCharts map[string]*CandleChart = make(map[string]*CandleChart)
+	var candleCharts map[string]*common.CandleChart = make(map[string]*common.CandleChart)
 
 	subscribe := GdaxSubscribe{
 		Type:       "subscribe",
@@ -118,52 +101,30 @@ func updateBestPrices(orderBook map[string]*common.Order, prices map[string][]fl
 	prices["gdax"][3] = sellSize
 }
 
-func (chart *CandleChart) addCandle(candle Candle) {
-	chart.CurrElem += 1
-	if chart.CurrElem == NUM_CANDLE {
-		chart.CurrElem = 0
-	}
-	chart.Chart[chart.CurrElem] = candle
-}
-
-func (chart *CandleChart) currentCandle() Candle {
-	return chart.Chart[chart.CurrElem]
-}
-
-func (chart *CandleChart) updateLastCandle(price, size float64) {
-	candle := &chart.Chart[chart.CurrElem]
-
-	if price > candle.High {
-		candle.High = price
-	} else if price < candle.Low {
-		candle.Low = price
-	}
-	// Update close to last price
-	candle.Close = price
-	// Also update average
-	candle.Average = (candle.High + candle.Low + candle.Open + candle.Close) / 4
-	// And volume
-	candle.Volume += size
-}
-
-func updateMatch(message GdaxMessage, candleCharts map[string]*CandleChart) {
+func updateMatch(message GdaxMessage, candleCharts map[string]*common.CandleChart) {
 	// Check if we're still in the current minute, or we need a new one
-	// Note: We're basing our logic on the current time received message
-	// However, this may not be 100% correct as the message could have been delayed,
-	// using the message's time would be more correct, but requires more time manipulation
-	// to fill in properly our candle chart data array
-	t := time.Now()
+	// Note: There is a small possibility of misattributing the match to the wrong candle,
+	// we're still doing some logic processing to attribute match to current or past candle,
+	// but not more than that (e.g. issues could appear if match received is older than a minute)
+	t := message.Time
 	productId := message.ProductId
 	if _, ok := candleCharts[productId]; !ok {
-		candleCharts[productId] = &CandleChart{CurrElem: 0, Chart: make([]Candle, NUM_CANDLE)}
+		candleCharts[productId] = common.CreateNewCandleChart()
 	}
 	candleChart := candleCharts[productId]
 
-	// if candleChart.currentCandle().Time.UnixNano() + 60000000000 < t.UnixNano() {
-	if candleChart.currentCandle().Time.UnixNano()+1000000000 < t.UnixNano() {
-		candleChart.addCandle(Candle{
-			// Time: t.Truncate(time.Minute),
-			Time:    t.Truncate(time.Second),
+	// Check if message belongs to this current or previous candle
+	if candleChart.CurrentCandle().Time.UnixNano()+60000000000 <= t.UnixNano() {
+		// Following output could be improved. Right now we are waiting for the next message
+		// to indicate a new candle, and possibly loosing a few seconds of headstart.
+		go output(message.ProductId, candleChart.CurrentCandle())
+
+		// Update current candle with indicators
+		// candleChart.CompleteCurrentCandle()
+
+		// Add new candle
+		candleChart.AddCandle(common.Candle{
+			Time:    t.Truncate(time.Minute),
 			Open:    message.Price,
 			High:    message.Price,
 			Low:     message.Price,
@@ -171,9 +132,14 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*CandleChart) {
 			Average: message.Price,
 			Volume:  message.Size,
 		})
-		go output(message.ProductId, candleChart.currentCandle())
 	} else {
-		candleChart.updateLastCandle(message.Price, message.Size)
+		// We're handling the edge case here, if we already created a new current candle, but
+		// for some reason we just got a match from past minute, we need to handle past minute candle
+		if candleChart.CurrentCandle().Time.UnixNano() > t.UnixNano() {
+			candleChart.UpdatePreviousCandle(message.Price, message.Size)
+		} else {
+			candleChart.UpdateCurrentCandle(message.Price, message.Size)
+		}
 	}
 }
 
@@ -244,7 +210,10 @@ func updateOrderBook(message GdaxMessage, orderBook map[string]*common.Order) {
 	}
 }
 
-func output(productId string, candle Candle) {
+func output(productId string, candle common.Candle) {
+	if candle.Time.Unix() < 0 {
+		return
+	}
 	file, err := os.OpenFile(productId+".txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
@@ -260,9 +229,9 @@ func output(productId string, candle Candle) {
 		candle.Volume)); err != nil {
 		fmt.Printf("ERROR WHILE WRITING")
 	}
-	fmt.Printf("%s %d %f %f %f %f %f %f\n",
+	fmt.Printf("%s %s %f %f %f %f %f %f\n",
 		productId,
-		candle.Time.Unix(),
+		candle.Time.Format(time.RFC3339),
 		candle.Open,
 		candle.High,
 		candle.Low,

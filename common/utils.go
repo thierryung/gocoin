@@ -3,8 +3,8 @@ package common
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"reflect"
+	"strings"
 )
 
 // JSONEncode encodes structure data into JSON
