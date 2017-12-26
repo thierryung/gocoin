@@ -3,6 +3,7 @@ package gdax
 import (
 	"fmt"
 	ws "github.com/gorilla/websocket"
+	"github.com/shopspring/decimal"
 	"os"
 	"strconv"
 	"thierry/gocoin/common"
@@ -27,8 +28,8 @@ type GdaxMessage struct {
 	RemainingSize float64    `json:"remaining_size,string"`
 	NewSize       float64    `json:"new_size,string"`
 	OldSize       float64    `json:"old_size,string"`
-	Size          float64    `json:"size,string"`
-	Price         float64    `json:"price,string"`
+	Size          string     `json:"size"`
+	Price         string     `json:"price"`
 	Side          string     `json:"side"`
 	Reason        string     `json:"reason"`
 	OrderType     string     `json:"order_type"`
@@ -113,6 +114,10 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*common.CandleChar
 	}
 	candleChart := candleCharts[productId]
 
+	// Decimal package
+	price, _ := decimal.NewFromString(message.Price)
+	size, _ := decimal.NewFromString(message.Size)
+
 	// Check if message belongs to this current or previous candle
 	currentCandle := candleChart.CurrentCandle()
 	if currentCandle.Time.UnixNano()+60000000000 <= t.UnixNano() {
@@ -122,25 +127,25 @@ func updateMatch(message GdaxMessage, candleCharts map[string]*common.CandleChar
 
 		// Following output could be improved. Right now we are waiting for the next message
 		// to indicate a new candle, and possibly loosing a few seconds of headstart.
-		go output(message.ProductId, currentCandle)
+		go output(message.ProductId, *currentCandle)
 
 		// Add new candle
 		candleChart.AddCandle(common.Candle{
 			Time:    t.Truncate(time.Minute),
-			Open:    message.Price,
-			High:    message.Price,
-			Low:     message.Price,
-			Close:   message.Price,
-			Average: message.Price,
-			Volume:  message.Size,
+			Open:    price,
+			High:    price,
+			Low:     price,
+			Close:   price,
+			Average: price,
+			Volume:  size,
 		})
 	} else {
 		// We're handling the edge case here, if we already created a new current candle, but
 		// for some reason we just got a match from past minute, we need to handle past minute candle
 		if currentCandle.Time.UnixNano() > t.UnixNano() {
-			candleChart.UpdatePreviousCandle(message.Price, message.Size)
+			candleChart.UpdatePreviousCandle(price, size)
 		} else {
-			candleChart.UpdateCurrentCandle(message.Price, message.Size)
+			candleChart.UpdateCurrentCandle(price, size)
 		}
 	}
 }
@@ -221,17 +226,20 @@ func output(productId string, candle common.Candle) {
 		panic(err)
 	}
 	defer file.Close()
-	if _, err = file.WriteString(fmt.Sprintf("%d %f %f %f %f %f %f\n",
+	if _, err = file.WriteString(fmt.Sprintf("%d %f %f %f %f %f %f %f %f %f\n",
 		candle.Time.Unix(),
 		candle.Open,
 		candle.High,
 		candle.Low,
 		candle.Close,
 		candle.Average,
-		candle.Volume)); err != nil {
+		candle.Volume,
+		candle.Indicators["mfi"],
+		candle.Indicators["macd"],
+		candle.Indicators["macdh"])); err != nil {
 		fmt.Printf("ERROR WHILE WRITING")
 	}
-	fmt.Printf("%s %s %f %f %f %f %f %f\n",
+	fmt.Printf("%s %s %f %f %f %f %f %f %f %f %f\n",
 		productId,
 		candle.Time.Format(time.RFC3339),
 		candle.Open,
@@ -240,5 +248,8 @@ func output(productId string, candle common.Candle) {
 		candle.Close,
 		candle.Average,
 		candle.Volume,
+		candle.Indicators["mfi"],
+		candle.Indicators["macd"],
+		candle.Indicators["macdh"],
 	)
 }
