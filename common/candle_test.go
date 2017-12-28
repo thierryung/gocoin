@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/shopspring/decimal"
+	"math"
 	"testing"
 )
 
@@ -38,6 +39,20 @@ func generateCandleChart() *CandleChart {
 	return candleChart
 }
 
+func generateCandleChartWithInit(num int, price decimal.Decimal, volume decimal.Decimal) *CandleChart {
+	candleChart := CreateNewCandleChart()
+	for i := 0; i < num; i++ {
+		candleChart.AddCandle(Candle{
+			Open:   price,
+			High:   price,
+			Low:    price,
+			Close:  price,
+			Volume: volume,
+		})
+	}
+	return candleChart
+}
+
 func TestGetPastRelativeCandle(t *testing.T) {
 	// GIVEN
 	// CandleChart
@@ -69,29 +84,69 @@ func TestGetPastRelativeCandle(t *testing.T) {
 	}
 }
 
-func TestCompleteCurrentCandle(t *testing.T) {
+func TestCalculateMfi(t *testing.T) {
 	// GIVEN
 	candleChart := generateCandleChart()
 
 	// WHEN
-	candleChart.CompleteCurrentCandle()
-	candle := candleChart.CurrentCandle()
+	res := candleChart.CalculateMfi(14)
 
 	// THEN
-	// MFI test
-	if candle.Indicators["mfi"].Ceil().Cmp(decimal.NewFromFloat(67.0)) != 0 {
-		t.Errorf("Candle MFI not correct %#v", candle)
+	if math.Ceil(res) != 67 {
+		t.Errorf("Candle MFI not correct %f", res)
 	}
 }
 
 func TestCalculateEma(t *testing.T) {
 	// GIVEN
-	// num := []float64{277.8, 278.78, 278.94, 280}
+	num := []decimal.Decimal{decimal.NewFromFloat(15837),
+		decimal.NewFromFloat(15808.8),
+		decimal.NewFromFloat(15810),
+		decimal.NewFromFloat(15826),
+		decimal.NewFromFloat(15815.01),
+		decimal.NewFromFloat(15801),
+		decimal.NewFromFloat(15780)}
 
-	// // WHEN
-	// res := CalculateEma(num, 277.0225)
+	// WHEN
+	res := CalculateEma(num, 4, decimal.NewFromFloat(15841.6625))
+
+	// THEN
+	// Approximation by 1000 should be exact
+	if res[len(res)-1].Floor().Cmp(decimal.NewFromFloat(15799.0)) != 0 {
+		t.Errorf("%v", res)
+	}
+}
+
+func TestCalculateEmaAgain(t *testing.T) {
+	// GIVEN
+	num := []decimal.Decimal{decimal.NewFromFloat(277.8),
+		decimal.NewFromFloat(278.78),
+		decimal.NewFromFloat(278.94),
+		decimal.NewFromFloat(280),
+		decimal.NewFromFloat(281.88),
+		decimal.NewFromFloat(281.99),
+		decimal.NewFromFloat(282.49),
+		decimal.NewFromFloat(282.92),
+		decimal.NewFromFloat(281),
+		decimal.NewFromFloat(281.96)}
+
+	// WHEN
+	res := CalculateEma(num, 3, decimal.NewFromFloat(277.0225))
 
 	// THEN
 	// Approximation by 100 should be exact
-	// if Math.Floor(res[0] * 100) != 27733
+	if res[len(res)-1].Mul(decimal.NewFromFloat(100.0)).Floor().Cmp(decimal.NewFromFloat(28183.0)) != 0 {
+		t.Errorf("%v", res)
+	}
+}
+
+func TestCalculateMacd(t *testing.T) {
+	// GIVEN
+	candleChart := generateCandleChartWithInit(100, decimal.NewFromFloat(10.0), decimal.NewFromFloat(20.0))
+
+	// WHEN
+	res := candleChart.CalculateMacd(2, 3, 2)
+
+	// THEN
+	t.Errorf("Candle Macd not correct %f", res)
 }
