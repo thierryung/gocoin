@@ -142,11 +142,66 @@ func TestCalculateEmaAgain(t *testing.T) {
 
 func TestCalculateMacd(t *testing.T) {
 	// GIVEN
-	candleChart := generateCandleChartWithInit(100, decimal.NewFromFloat(10.0), decimal.NewFromFloat(20.0))
+	candleChart := CreateNewCandleChart()
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.63)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.56)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.1)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(58.94)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(58.64)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.56)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(58.81)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.67)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(58.92)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(58.18)})
 
 	// WHEN
-	res := candleChart.CalculateMacd(2, 3, 2)
+	macd, macdh := candleChart.CalculateMacd(4, 5, 2)
 
 	// THEN
-	t.Errorf("Candle Macd not correct %f", res)
+	// Verify approximate to a few decimals
+	// We use ceil for negative numbers, and floor for positive
+	if math.Ceil(macd * 1000000) != -122741 {
+		t.Errorf("Candle Macd not correct %f", macd)
+	}
+	if math.Ceil(macdh * 1000000) != -12693 {
+		t.Errorf("Candle Macdh not correct %f", macdh)
+	}
+}
+
+func TestCalculateMacdAgain(t *testing.T) {
+	// GIVEN
+	candleChart := CreateNewCandleChart()
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.7)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(61.77)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.35)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.59)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.58)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.36)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.29)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.22)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(61.69)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(62.43)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(61.83)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.64)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.43)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.91)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.82)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.59)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(59.57)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.24)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.63)})
+	candleChart.AddCandle(Candle{Close: decimal.NewFromFloat(60.56)})
+
+	// WHEN
+	macd, macdh := candleChart.CalculateMacd(5, 8, 4)
+
+	// THEN
+	// Verify approximate to a few decimals.
+	// We use ceil for negative numbers, and floor for positive
+	if math.Ceil(macd * 1000000) != -97082 {
+		t.Errorf("Candle Macd not correct %f", macd)
+	}
+	if math.Floor(macdh * 1000000) != 113533 {
+		t.Errorf("Candle Macdh not correct %f", macdh)
+	}
 }

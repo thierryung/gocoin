@@ -90,12 +90,8 @@ func (chart *CandleChart) CompleteCurrentCandle() {
 	candle.Indicators["mfi"] = chart.CalculateMfi(mfiConfig)
 
 	// Calculate MACD. We need at least double the longest period for this.
-	candle.Indicators["macd"] = chart.CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig)
-
-	// macd := emaShort - emaLong
-	// candle.Indicators["macd"] = macd
-	// candle.Indicators["macdh"] = macd - emaSignal
-	// fmt.Printf("emaShort %f, emaLong %f, macd %f, signal %f\n", emaShort, emaLong, macd, emaSignal)
+	macd, macdh := chart.CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig)
+	candle.Indicators["macd"], candle.Indicators["macdh"] = macd, macdh
 }
 
 func (chart *CandleChart) CalculateMfi(days int) float64 {
@@ -121,40 +117,51 @@ func (chart *CandleChart) CalculateMfi(days int) float64 {
 	return res
 }
 
-func (chart *CandleChart) CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig int) float64 {
+func (chart *CandleChart) CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig int) (float64, float64) {
+	// We can only calculate MACD if we have enough candles
+	if chart.totalCandle < emaLongConfig || chart.totalCandle < macdEmaSignalConfig * 2 {
+		return 0.0, 0.0
+	}
 	// Calculate starter SMA
-	smaShortList := make([]decimal.Decimal, emaShortConfig)
-	emaShortList := make([]decimal.Decimal, emaShortConfig)
-	smaLongList := make([]decimal.Decimal, emaLongConfig)
-	emaLongList := make([]decimal.Decimal, emaLongConfig)
-	smaShortNum, smaLongNum, emaShortNum, emaLongNum := 0, 0, 0, 0
-	for i := -(emaLongConfig * 2); i <= 0; i++ {
+	smaList := make([]decimal.Decimal, emaLongConfig)
+	emaList := make([]decimal.Decimal, emaLongConfig)
+	smaNum, emaNum := 0, 0
+	for i := -(emaLongConfig * 2) + 1; i <= 0; i++ {
 		c := chart.GetPastRelativeCandle(i)
-		if i > -(emaLongConfig*2) && i <= -emaLongConfig {
-			smaLongList[smaLongNum] = c.Close
-			fmt.Printf("iter %d, smaLongNum %d, smaLongList %v\n", i, smaLongNum, smaLongList)
-			smaLongNum += 1
-		} else if i > emaLongConfig {
-			emaLongList[emaLongNum] = c.Close
-			emaLongNum += 1
-		}
-		if i > -(emaShortConfig*2) && i < -emaShortConfig {
-			smaShortList[smaShortNum] = c.Close
-			smaShortNum += 1
-		} else if i > emaShortConfig {
-			emaShortList[emaShortNum] = c.Close
-			emaShortNum += 1
+		// Use the first few for SMA
+		if smaNum < emaLongConfig {
+			smaList[smaNum] = c.Close
+			smaNum += 1
+		// Then for EMA
+		} else {
+			emaList[emaNum] = c.Close
+			emaNum += 1
 		}
 	}
-	smaShort := calculateSma(smaShortList)
-	smaLong := calculateSma(smaLongList)
+	// For short SMA, we only need a slice of the data
+	smaShort := calculateSma(smaList[len(smaList)-emaShortConfig:])
+	smaLong := calculateSma(smaList)
 
 	// Calculate EMA from SMA starting point
-	emaLong := CalculateEma(emaLongList, emaLongConfig, smaLong)
-	emaShort := CalculateEma(emaShortList, emaShortConfig, smaShort)
+	emaLong := CalculateEma(emaList, emaLongConfig, smaLong)
+	emaShort := CalculateEma(emaList, emaShortConfig, smaShort)
 
-	fmt.Printf("smaShort %s, smaLong %s, emaShort %v, emaLong %v\n", smaShort, smaLong, emaShort, emaLong)
-	return 0.0
+	// Calculate MACD line
+	macd := make([]decimal.Decimal, emaLongConfig)
+	for i := 0; i < emaLongConfig; i++ {
+		macd[i] = emaShort[i].Sub(emaLong[i])
+	}
+
+	// Calculate Signal line
+	macdSignalSma := calculateSma(macd[:macdEmaSignalConfig])
+	macdSignalList := CalculateEma(macd[macdEmaSignalConfig:], macdEmaSignalConfig, macdSignalSma)
+
+	macdValue := macd[len(macd)-1]
+	macdSignalRes := macdSignalList[len(macdSignalList)-1]
+	macdhRes, _ := macdValue.Sub(macdSignalRes).Float64()
+	macdRes, _ := macdValue.Float64()
+
+	return macdRes, macdhRes
 }
 
 func CreateNewCandleChart() *CandleChart {
@@ -205,7 +212,7 @@ func calculateSingleEma(price decimal.Decimal, numDays int, previousEma decimal.
 func calculateSma(numbers []decimal.Decimal) decimal.Decimal {
 	var sma decimal.Decimal
 	for i := 0; i < len(numbers); i++ {
-		sma.Add(numbers[i])
+		sma = sma.Add(numbers[i])
 	}
 	return sma.Div(decimal.NewFromFloat(float64(len(numbers))))
 }
