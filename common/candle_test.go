@@ -160,10 +160,10 @@ func TestCalculateMacd(t *testing.T) {
 	// THEN
 	// Verify approximate to a few decimals
 	// We use ceil for negative numbers, and floor for positive
-	if math.Ceil(macd * 1000000) != -122741 {
+	if math.Ceil(macd*1000000) != -122741 {
 		t.Errorf("Candle Macd not correct %f", macd)
 	}
-	if math.Ceil(macdh * 1000000) != -12693 {
+	if math.Ceil(macdh*1000000) != -12693 {
 		t.Errorf("Candle Macdh not correct %f", macdh)
 	}
 }
@@ -198,10 +198,10 @@ func TestCalculateMacdAgain(t *testing.T) {
 	// THEN
 	// Verify approximate to a few decimals.
 	// We use ceil for negative numbers, and floor for positive
-	if math.Ceil(macd * 1000000) != -97082 {
+	if math.Ceil(macd*1000000) != -97082 {
 		t.Errorf("Candle Macd not correct %f", macd)
 	}
-	if math.Floor(macdh * 1000000) != 113533 {
+	if math.Floor(macdh*1000000) != 113533 {
 		t.Errorf("Candle Macdh not correct %f", macdh)
 	}
 }

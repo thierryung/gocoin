@@ -77,9 +77,7 @@ func (chart *CandleChart) UpdatePreviousCandle(price, size decimal.Decimal) {
 // a big performance hit as they only get called once a candle is complete
 func (chart *CandleChart) CompleteCurrentCandle() {
 	mfiConfig := 14
-	// shortEma, longEma, macdEmaSignal := 10, 26, 9
-	emaShortConfig, emaLongConfig, macdEmaSignalConfig := 4, 5, 3
-	fmt.Println(macdEmaSignalConfig)
+	shortEma, longEma, macdEmaSignal := 10, 26, 9
 
 	// Calculate average price, and create indicator array
 	candle := chart.CurrentCandle()
@@ -119,7 +117,7 @@ func (chart *CandleChart) CalculateMfi(days int) float64 {
 
 func (chart *CandleChart) CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig int) (float64, float64) {
 	// We can only calculate MACD if we have enough candles
-	if chart.totalCandle < emaLongConfig || chart.totalCandle < macdEmaSignalConfig * 2 {
+	if chart.totalCandle < emaLongConfig || chart.totalCandle < macdEmaSignalConfig*2 {
 		return 0.0, 0.0
 	}
 	// Calculate starter SMA
@@ -132,7 +130,7 @@ func (chart *CandleChart) CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSi
 		if smaNum < emaLongConfig {
 			smaList[smaNum] = c.Close
 			smaNum += 1
-		// Then for EMA
+			// Then for EMA
 		} else {
 			emaList[emaNum] = c.Close
 			emaNum += 1
