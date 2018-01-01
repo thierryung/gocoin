@@ -226,7 +226,7 @@ func output(productId string, candle common.Candle) {
 		panic(err)
 	}
 	defer file.Close()
-	if _, err = file.WriteString(fmt.Sprintf("%d %f %f %f %f %f %f %f %f %f\n",
+	if _, err = file.WriteString(fmt.Sprintf("%d %s %s %s %s %s %s %f %f %f\n",
 		candle.Time.Unix(),
 		candle.Open,
 		candle.High,
@@ -239,7 +239,7 @@ func output(productId string, candle common.Candle) {
 		candle.Indicators["macdh"])); err != nil {
 		fmt.Printf("ERROR WHILE WRITING")
 	}
-	fmt.Printf("%s %s %f %f %f %f %f %f %f %f %f\n",
+	fmt.Printf("%s %s %s %s %s %s %s %s %f %f %f\n",
 		productId,
 		candle.Time.Format(time.RFC3339),
 		candle.Open,

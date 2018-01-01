@@ -89,7 +89,7 @@ func TestCalculateMfi(t *testing.T) {
 	candleChart := generateCandleChart()
 
 	// WHEN
-	res := candleChart.CalculateMfi(14)
+	res := candleChart.CalculateMfi(3)
 
 	// THEN
 	if math.Ceil(res) != 67 {

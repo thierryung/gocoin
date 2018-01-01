@@ -56,10 +56,10 @@ func (chart *CandleChart) GetPastRelativeCandle(i int) *Candle {
 	// Abs
 	i = -i
 	pos := chart.currElem
-	if i > chart.currElem {
-		pos = len(chart.Chart) - i - chart.currElem
-	} else {
+	if i <= chart.currElem {
 		pos = chart.currElem - i
+	} else {
+		pos = len(chart.Chart) - i + chart.currElem
 	}
 	return &chart.Chart[pos]
 }
@@ -77,7 +77,7 @@ func (chart *CandleChart) UpdatePreviousCandle(price, size decimal.Decimal) {
 // a big performance hit as they only get called once a candle is complete
 func (chart *CandleChart) CompleteCurrentCandle() {
 	mfiConfig := 14
-	shortEma, longEma, macdEmaSignal := 10, 26, 9
+	emaShortConfig, emaLongConfig, macdEmaSignalConfig := 10, 26, 9
 
 	// Calculate average price, and create indicator array
 	candle := chart.CurrentCandle()
@@ -93,6 +93,9 @@ func (chart *CandleChart) CompleteCurrentCandle() {
 }
 
 func (chart *CandleChart) CalculateMfi(days int) float64 {
+	if chart.totalCandle < days {
+		return 0.0
+	}
 	// Money flow for all related candles
 	var moneyFlowPositive, moneyFlowNegative, previousPrice decimal.Decimal
 	three := decimal.NewFromFloat(3)
@@ -109,7 +112,10 @@ func (chart *CandleChart) CalculateMfi(days int) float64 {
 		previousPrice = price
 	}
 	// Money ratio
-	moneyFlowRatio := moneyFlowPositive.Div(moneyFlowNegative)
+	moneyFlowRatio := moneyFlowPositive
+	if !moneyFlowNegative.Equal(decimal.NewFromFloat(0.0)) {
+		moneyFlowRatio = moneyFlowPositive.Div(moneyFlowNegative)
+	}
 	hundred := decimal.NewFromFloat(100.0)
 	res, _ := hundred.Sub(hundred.Div((decimal.NewFromFloat(1.0).Add(moneyFlowRatio)))).Float64()
 	return res
@@ -117,7 +123,7 @@ func (chart *CandleChart) CalculateMfi(days int) float64 {
 
 func (chart *CandleChart) CalculateMacd(emaShortConfig, emaLongConfig, macdEmaSignalConfig int) (float64, float64) {
 	// We can only calculate MACD if we have enough candles
-	if chart.totalCandle < emaLongConfig || chart.totalCandle < macdEmaSignalConfig*2 {
+	if chart.totalCandle < emaLongConfig*2 || chart.totalCandle < macdEmaSignalConfig*2 {
 		return 0.0, 0.0
 	}
 	// Calculate starter SMA
