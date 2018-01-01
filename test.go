@@ -13,8 +13,8 @@ import (
 )
 
 type Fifo struct {
-	Chart       []float64
-	CurrElem    int
+	Chart    []float64
+	CurrElem int
 }
 
 func (fifo *Fifo) AddNew(value float64) {
@@ -51,10 +51,10 @@ func (fifo *Fifo) IsIncreasingFromPositive() bool {
 
 func stringToTime(s string) time.Time {
 	i, err := strconv.ParseInt(s, 10, 64)
-    if err != nil {
-        panic(err)
-    }
-    return time.Unix(i, 0)
+	if err != nil {
+		panic(err)
+	}
+	return time.Unix(i, 0)
 }
 
 // Send in starting money, returns number of shares, and fee
@@ -143,7 +143,7 @@ func main() {
 					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = false
 					lastSellCounter = counter
-				// Sell when mfi > 0 and price decrease
+					// Sell when mfi > 0 and price decrease
 				} else if candle.Indicators["mfi"] > 80 && clos.Cmp(lastPrice) < 0 {
 					startingMoney, feeCalc = sell(numShare, clos, fee)
 					startingMoney = startingMoney.Sub(feeCalc)
@@ -151,21 +151,21 @@ func main() {
 					lastSellCounter = counter
 				}
 
-			// If not, look at the buy strategy
+				// If not, look at the buy strategy
 			} else {
-				// fmt.Printf("mfi: %f, macdh: %f\n", candle.Indicators["mfi"], candle.Indicators["macdh"])
+				fmt.Printf("mfi: %f, macdh: %f\n", candle.Indicators["mfi"], candle.Indicators["macdh"])
 				// Filter out when mfi > 60
 				if candle.Indicators["mfi"] > 60 {
-				// Filter out when we just sold last tick
-				} else if lastSellCounter + 1 == counter {
-				// Filter out when volume is lower than average
+					// Filter out when we just sold last tick
+				} else if lastSellCounter+1 == counter {
+					// Filter out when volume is lower than average
 				} else if volFloat < volumeData.GetAverage() {
-				// Buy when macd > 30
+					// Buy when macd > 30
 				} else if candle.Indicators["macdh"] >= 0.30 {
 					numShare, feeCalc = buy(startingMoney, clos, fee)
 					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = true
-				// Buy when macd > 10 and increasing macdh
+					// Buy when macd > 10 and increasing macdh
 				} else if candle.Indicators["macdh"] >= 0.10 && macdhData.IsIncreasingFromPositive() {
 					numShare, feeCalc = buy(startingMoney, clos, fee)
 					startingMoney = startingMoney.Sub(feeCalc)
@@ -178,7 +178,7 @@ func main() {
 
 	}
 	// Strategy run complete, display gain loss
-	fmt.Printf("\n\n==================\n\nWe ended with %s\n\n", startingMoney)
+	fmt.Printf("\n\n==================\n\nWe ended with %s (%d candles)\n\n", startingMoney, counter)
 
 	if err != io.EOF {
 		fmt.Printf(" > Failed!: %v\n", err)

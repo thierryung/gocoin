@@ -39,7 +39,7 @@ func generateCandleChart() *CandleChart {
 	return candleChart
 }
 
-func generateCandleChartWithInit(num int, price decimal.Decimal, volume decimal.Decimal) *CandleChart {
+func generateCandleChartWithInit(num int, price, volume decimal.Decimal) *CandleChart {
 	candleChart := CreateNewCandleChart()
 	for i := 0; i < num; i++ {
 		candleChart.AddCandle(Candle{
@@ -51,6 +51,16 @@ func generateCandleChartWithInit(num int, price decimal.Decimal, volume decimal.
 		})
 	}
 	return candleChart
+}
+
+func generateCandle(price, volume float64) Candle {
+	return Candle{
+		Open:   decimal.NewFromFloat(price),
+		High:   decimal.NewFromFloat(price),
+		Low:    decimal.NewFromFloat(price),
+		Close:  decimal.NewFromFloat(price),
+		Volume: decimal.NewFromFloat(volume),
+	}
 }
 
 func TestGetPastRelativeCandle(t *testing.T) {
@@ -92,8 +102,44 @@ func TestCalculateMfi(t *testing.T) {
 	res := candleChart.CalculateMfi(3)
 
 	// THEN
-	if math.Ceil(res) != 67 {
+	if math.Ceil(res) != 70 {
 		t.Errorf("Candle MFI not correct %f", res)
+	}
+}
+
+func TestCalculateMfiAgain(t *testing.T) {
+	// GIVEN
+	candleChart := generateCandleChart()
+	candleChart.AddCandle(generateCandle(10, 10))
+	candleChart.AddCandle(generateCandle(15, 10))
+	candleChart.AddCandle(generateCandle(20, 10))
+	candleChart.AddCandle(generateCandle(18, 10))
+	candleChart.AddCandle(generateCandle(12, 10))
+	candleChart.AddCandle(generateCandle(10, 10))
+	candleChart.AddCandle(generateCandle(20, 10))
+	candleChart.AddCandle(generateCandle(33, 10))
+	candleChart.AddCandle(generateCandle(30, 10))
+	candleChart.AddCandle(generateCandle(32, 10))
+
+	// WHEN
+	res3 := candleChart.CalculateMfi(3)
+	res4 := candleChart.CalculateMfi(4)
+	res8 := candleChart.CalculateMfi(8)
+	res10 := candleChart.CalculateMfi(10)
+
+	// THEN
+	// Approximation to two decimals
+	if math.Floor(res3*100) != 6842 {
+		t.Errorf("Candle MFI 3 not correct %f", res3)
+	}
+	if math.Floor(res4*100) != 7391 {
+		t.Errorf("Candle MFI 4 not correct %f", res4)
+	}
+	if res8 != 60 {
+		t.Errorf("Candle MFI 8 not correct %f", res8)
+	}
+	if res10 != 65 {
+		t.Errorf("Candle MFI 10 not correct %f", res10)
 	}
 }
 

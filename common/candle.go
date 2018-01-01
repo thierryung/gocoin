@@ -99,8 +99,11 @@ func (chart *CandleChart) CalculateMfi(days int) float64 {
 	// Money flow for all related candles
 	var moneyFlowPositive, moneyFlowNegative, previousPrice decimal.Decimal
 	three := decimal.NewFromFloat(3)
+	// Get starter price
+	candle := chart.GetPastRelativeCandle(-days)
+	previousPrice = (candle.High.Add(candle.Low).Add(candle.Close)).Div(three)
 	// Start at candle current - mfiConfig
-	for i := -days; i <= 0; i++ {
+	for i := -days + 1; i <= 0; i++ {
 		c := chart.GetPastRelativeCandle(i)
 		price := (c.High.Add(c.Low).Add(c.Close)).Div(three)
 		moneyFlow := price.Mul(c.Volume)
