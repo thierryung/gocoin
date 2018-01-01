@@ -57,23 +57,26 @@ func stringToTime(s string) time.Time {
     return time.Unix(i, 0)
 }
 
-// Send in starting money, returns number of shares
-func buy(startingMoney decimal.Decimal, price decimal.Decimal) decimal.Decimal {
+// Send in starting money, returns number of shares, and fee
+func buy(startingMoney, price, fee decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
 	res := startingMoney.Div(price)
-	fmt.Printf("Buying %s shares at %s price for a total of %s\n", res, price, startingMoney)
-	return res
+	feeCalc := startingMoney.Mul(fee)
+	fmt.Printf("Buying %s shares at %s price for a total of %s. Fee %s\n", res, price, startingMoney, feeCalc)
+	return res, feeCalc
 }
 
 // Send in number of shares, returns money gained
-func sell(numShare decimal.Decimal, price decimal.Decimal) decimal.Decimal {
+func sell(numShare, price, fee decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
 	res := numShare.Mul(price)
-	fmt.Printf("Selling %s shares at %s price for a total of %s\n", numShare, price, res)
-	return res
+	feeCalc := fee.Mul(res)
+	fmt.Printf("Selling %s shares at %s price for a total of %s, minus fee of %s\n", numShare, price, res, feeCalc)
+	return res, feeCalc
 }
 
 func main() {
 
 	startingMoney := decimal.NewFromFloat(1000.0)
+	fee := decimal.NewFromFloat(0.0)
 
 	candleChart := common.CreateNewCandleChart()
 
@@ -93,7 +96,7 @@ func main() {
 	lastSellCounter := 0
 	volumeData := &Fifo{CurrElem: 0, Chart: make([]float64, 5)}
 	macdhData := &Fifo{CurrElem: 0, Chart: make([]float64, 3)}
-	var numShare, lastPrice decimal.Decimal
+	var numShare, lastPrice, feeCalc decimal.Decimal
 	currentlyHolding := false
 	for {
 		line, err = reader.ReadString('\n')
@@ -136,12 +139,14 @@ func main() {
 			if currentlyHolding {
 				// Sell when mfi > 90
 				if candle.Indicators["mfi"] > 90 {
-					startingMoney = sell(numShare, clos)
+					startingMoney, feeCalc = sell(numShare, clos, fee)
+					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = false
 					lastSellCounter = counter
 				// Sell when mfi > 0 and price decrease
 				} else if candle.Indicators["mfi"] > 80 && clos.Cmp(lastPrice) < 0 {
-					startingMoney = sell(numShare, clos)
+					startingMoney, feeCalc = sell(numShare, clos, fee)
+					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = false
 					lastSellCounter = counter
 				}
@@ -156,12 +161,14 @@ func main() {
 				// Filter out when volume is lower than average
 				} else if volFloat < volumeData.GetAverage() {
 				// Buy when macd > 30
-				} else if candle.Indicators["macdh"] >= 0.10 {
-					numShare = buy(startingMoney, clos)
+				} else if candle.Indicators["macdh"] >= 0.30 {
+					numShare, feeCalc = buy(startingMoney, clos, fee)
+					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = true
 				// Buy when macd > 10 and increasing macdh
 				} else if candle.Indicators["macdh"] >= 0.10 && macdhData.IsIncreasingFromPositive() {
-					numShare = buy(startingMoney, clos)
+					numShare, feeCalc = buy(startingMoney, clos, fee)
+					startingMoney = startingMoney.Sub(feeCalc)
 					currentlyHolding = true
 				}
 			}
